@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Getting Started &#8212; Deep Learning Promoter Recognition Testing 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Help" href="help.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<p>To get started please clone the <a class="reference external" href="https://github.com/ivanpmartell/masters-thesis">repository</a> with its submodules:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone --recurse-submodules -j8 https://github.com/ivanpmartell/masters-thesis.git
+</pre></div>
+</div>
+<p>For our analysis script to work, we needed sci-kit learn’s safe indexing to work with pytorch datasets. Therefore, the following snippet to <cite>sklearn.utils.safe_indexing</cite> should be added:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;__getitem__&quot;</span><span class="p">):</span>
+  <span class="n">indices</span> <span class="o">=</span> <span class="n">indices</span> <span class="k">if</span> <span class="n">indices</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">writeable</span> <span class="k">else</span> <span class="n">indices</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+  <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">X</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">idx</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The project is structured in functionality by its folders:</p>
+<ul class="simple">
+<li><p>The <cite>models</cite> are contained in folders with capital letters (e.g. <cite>CNNPROM</cite>, <cite>ICNN</cite>, <cite>DPROM</cite>)</p></li>
+<li><p>The folder <cite>OURS</cite> is a placeholder for your model</p></li>
+<li><p>The folder <cite>docs</cite> is used for this documentation</p></li>
+<li><p>The folder <cite>data</cite> contains all the data necessary for the implemented models, as well as our testing methods</p></li>
+<li><p>The folders <cite>train</cite>, <cite>test</cite>, and <cite>cross_validate</cite> have the code to train, test, and cross validate the implemented models</p></li>
+<li><p>The file <cite>analysis.py</cite> contains code for analyzing the results after testing the models</p></li>
+</ul>
+<p>The logical set of steps to follow include:</p>
+<p>1 Train or cross validate a model</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Training creates a folder models with a subfolder of the trained model’s name that might include a csv file of the training data, a json file of the training history and a pt file of the trained model.</p></li>
+<li><p>Depending on the model, <a class="reference external" href="getting_started.html#data-acquisition">acquisition of additional data</a> might be required.</p></li>
+</ul>
+</div></blockquote>
+<p>2 Test the trained model</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Testing creates the resulting csv file of the tested dataset with the model’s predicted scores and true labels.</p></li>
+</ul>
+</div></blockquote>
+<p>3 Analyse the tested model’s results</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Analyzing creates a results folder with the analysis of the model’s predictions from the testing csv output previously created.</p></li>
+</ul>
+</div></blockquote>
+<p>The scripts contain arguments (e.g output folder) that can be modified by the user as needed.</p>
+</div>
+<div class="section" id="data-acquisition">
+<h1>Data acquisition<a class="headerlink" href="#data-acquisition" title="Permalink to this headline">¶</a></h1>
+<p>When needed, the data folder provides bash scripts to download necessary data.</p>
+<ul class="simple">
+<li><p>An instance of a downloading bash script is located in <cite>data/human_chrs/download.sh</cite></p></li>
+</ul>
+<p>In case of blast data, <a class="reference external" href="https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/">blast+ executables</a> are required for the database creation scripts to function.</p>
+<p>-An instance of a blast script is located in <cite>data/blast/promoter_database/create_blast_database.sh</cite></p>
+</div>
+<div class="section" id="required-libraries">
+<h1>Required libraries<a class="headerlink" href="#required-libraries" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>pytorch: Different <a class="reference external" href="https://pytorch.org/get-started/locally/">installations</a> possible</p></li>
+<li><p>skorch: <cite>pip install -U skorch</cite></p></li>
+<li><p>biopython: <cite>pip install biopython</cite></p></li>
+<li><p>mysql: <cite>pip install mysql-connector-python</cite></p></li>
+</ul>
+</div>
+<div class="section" id="running-scripts">
+<h1>Running scripts<a class="headerlink" href="#running-scripts" title="Permalink to this headline">¶</a></h1>
+<p>To run the scripts, locate the repository’s directory: e.g. <cite>/path/to/masters-thesis</cite>.
+Once your terminal has switched to that directory, run python along with the script: e.g. <cite>python train/cnnprom.py</cite>.
+The terminal should look like the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>user@machine:/path/to/repository/masters-thesis$ python train/cnnprom.py
+</pre></div>
+</div>
+<p>where user, machine, and path to repository depends on your computers configuration.</p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Deep Learning Promoter Recognition Testing</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#data-acquisition">Data acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#required-libraries">Required libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#running-scripts">Running scripts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="help.html">Help</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="introduction.html" title="previous chapter">Introduction</a></li>
+      <li>Next: <a href="help.html" title="next chapter">Help</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Ivan Perez.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/getting_started.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
