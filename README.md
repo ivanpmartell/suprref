@@ -1,6 +1,8 @@
 # SUpervised PRomoter REcognition Framework
 For research on promoter recognition using deep learning.
 
+This project is being reworked to reduce resource utilisation (Mostly RAM usage). Updates are introduced into suprref folder. Previous version including previously published models and data are available in the previous folder. Documentation for the previous version at https://ivanpmartell.github.io/masters-thesis/, Analysis tools also available in the analysis folder.
+
 ## Docker installation
 Requires docker or docker desktop.
 
