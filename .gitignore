@@ -130,6 +130,5 @@ dmypy.json
 
 # VS Code debugging
 .vscode/
-data/
 out/
 test/

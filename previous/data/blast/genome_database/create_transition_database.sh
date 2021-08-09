@@ -1,0 +1,1 @@
+blastn -query human_promoters_chr1.fa -db human_chr1 -outfmt "7 qseqid pident nident sstart send sstrand" -num_threads 4 -word_size 30 -perc_identity 100 -ungapped | awk '/100.000\t300/' > annotations.out

@@ -1,0 +1,1 @@
+makeblastdb -in ../human_complete.fa -title "Human Promoter Blast Database (EPDnew)" -dbtype nucl -out human_promoters

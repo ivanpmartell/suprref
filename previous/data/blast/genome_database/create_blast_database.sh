@@ -1,0 +1,1 @@
+makeblastdb -in ../../human_chrs/chr1.fa -title "Human Chromosome 1 Blast Database (hg38)" -dbtype nucl -out human_chr1
