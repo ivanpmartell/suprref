@@ -3,10 +3,12 @@ import sys
 import json
 import torch
 import random
+import requests
 import argparse
 import numpy as np
 from pathlib import Path
 from itertools import product
+from tqdm import tqdm
 from PyInquirer import prompt, Separator, Validator, ValidationError
 
 DATA_FOLDER = 'data/'
@@ -673,10 +675,12 @@ class Helper:
 
     @staticmethod
     def save_annotation(file, kwargs):
-        with open(file,"wb") as annotation_file:
-            for chunk in kwargs.get('response').iter_content(chunk_size=1024):
-                if chunk:
-                    annotation_file.write(chunk)
+        resp = requests.get(kwargs.get('url'), stream=True)
+        with tqdm.wrapattr(open(file, "wb"), "write", miniters=1,
+                        total=int(resp.headers.get('content-length', 0)),
+                        desc=file) as fout:
+            for chunk in resp.iter_content(chunk_size=1024):
+                fout.write(chunk)
 
     @staticmethod
     def save_header(buffer, kwargs):
@@ -717,7 +721,6 @@ class Helper:
         return one_hot
 
     def download_epd_promoters(self, db='human', tata='all', save_path=''): #tata: all, with, without
-        import requests
         headers = {'accept': 'text/html',
                     'content-type': 'application/x-www-form-urlencoded',
                     'sec-ch-ua': '\" Not;A Brand\";v=\"99\", \"Chromium\";v=\"91\"',
@@ -739,28 +742,35 @@ class Helper:
                 break
         if not download_url.strip():
             raise Exception("Could not find download link")
-        r = requests.get(download_url, stream = True)
+        motifs_str = ""
+        if tata == self._EPD_TATA_FILTERS[0]:
+            motifs_str = "All motifs"
+        elif tata == self._EPD_TATA_FILTERS[1]:
+            motifs_str = "With TATA motifs (TATA)"
+        else:
+            motifs_str = "Without TATA motifs (non-TATA)"
         if not save_path:
             save_file = os.path.join(os.getcwd(), f"epd_{db}_tata-{tata}.sga")
         else:
             save_file = save_path
-        self.save_file(save_file, Helper.save_annotation, response=r)
+        print(f"Downloading EPD {db} promoters: {motifs_str}")
+        self.save_file(save_file, Helper.save_annotation, url=download_url)
 
     def download_f5_promoters(self, db='human', save_path=''):
-        import requests
         base_url = "https://fantom.gsc.riken.jp/5"
         specie_genome_dict = {'human': 'hg38', 'mouse': 'mm10', 'rat': 'rn6', 'dog': 'canFam3',
                                 'chicken': 'galGal5', 'rhesus': 'rheMac8'}
         download_url = ""
         if db in ['human', 'mouse']:
-            download_url = base_url + f"/datafiles/reprocessed/{specie_genome_dict[db]}_latest/extra/CAGE_peaks/"
+            download_url = base_url + f"/datafiles/reprocessed/{specie_genome_dict[db]}_latest/extra/CAGE_peaks/{specie_genome_dict[db]}_fair+new_CAGE_peaks_phase1and2.bed.gz"
         else:
             download_url = base_url + f"/datafiles/latest/extra/CAGE_peaks/{specie_genome_dict[db]}.cage_peak_coord.bed.gz"
         if not download_url.strip():
             raise Exception("Could not find download link")
-        r = requests.get(download_url, stream = True)
         if not save_path:
             save_file = os.path.join(os.getcwd(), f"f5_{db}.bed.gz")
         else:
             save_file = os.path.abspath(save_path)
-        self.save_file(save_file, Helper.save_annotation, response=r)
+        print(f"Downloading FANTOM5 {db} promoters")
+        self.save_file(save_file, Helper.save_annotation, url=download_url)
+    
