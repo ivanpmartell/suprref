@@ -189,6 +189,8 @@ class Helper:
     _EXPERIMENT_OPTIMIZER_ARGS_FILENAME = 'optimizer.args'
     _NN_OUTPUT_FUNCTIONS = ['sigmoid', 'softmax']
     _NN_MODULES: dict
+    _NN_MODULE_ARGS = {}
+    _NN_OPTIMIZER_ARGS = {}
     _NN_OPTIMIZERS = ['Adam', 'Adadelta', 'Adagrad', 'AdamW', 'SparseAdam', 'Adamax', 'ASGD', 'LBFGS', 'NAdam', 'RAdam', 'RMSprop', 'Rprop', 'SGD'] # Algorithms: https://pytorch.org/docs/stable/optim.html
     _F5_SPECIES = ['human', 'mouse', 'rat', 'dog', 'chicken', 'rhesus']
     _EPD_DATABASES = ['human', 'human_nc', 'M_mulatta', 'mouse', 'mouse_nc', 'R_norvegicus', 'C_familiaris', 'G_gallus', 'drosophila', 'A_mellifera', 'zebrafish', 'worm', 'arabidopsis', 'Z_mays', 'S_cerevisiae', 'S_pombe', 'P_falciparum']
@@ -249,6 +251,16 @@ class Helper:
         config_file = os.path.join(experiment_folder, self._EXPERIMENT_CONFIGURATION_FILENAME)
         with open(config_file) as f:
             self.CONF_DICT = json.load(f)
+        module_args_file = os.path.join(experiment_folder, self._EXPERIMENT_MODULE_ARGS_FILENAME)
+        if os.path.isfile(module_args_file):
+            with open(module_args_file) as f:
+                self._NN_MODULE_ARGS = json.load(f)
+        self._NN_MODULE_ARGS = {f'module__{k}': v for k, v in self._NN_MODULE_ARGS.items()}
+        optimizer_args_file = os.path.join(experiment_folder, self._EXPERIMENT_OPTIMIZER_ARGS_FILENAME)
+        if os.path.isfile(optimizer_args_file):
+            with open(optimizer_args_file) as f:
+                self._NN_OPTIMIZER_ARGS = json.load(f)
+        self._NN_OPTIMIZER_ARGS = {f'optimizer__{k}': v for k, v in self._NN_OPTIMIZER_ARGS.items()}
         #TODO: validate loaded json
 
     def read_create_arguments(self):
@@ -296,7 +308,7 @@ class Helper:
                             type=str, help='Optimizer for training the neural network', choices=self._NN_OPTIMIZERS)
         parser.add_argument('-f', f'--{self._DICTKEY_NN_OUTPUT_FUNCTION}', metavar='output function', required=False, default=self._NN_OUTPUT_FUNCTIONS[0],
                             type=str, help='Function of the last layer of the neural network', choices=self._NN_OUTPUT_FUNCTIONS)
-        parser.add_argument('-m', f'--{self._DICTKEY_NN_MODULE}', metavar='pytorch neural network module', required=False, default=list(self._NN_MODULES.keys())[0],
+        parser.add_argument('-m', f'--{self._DICTKEY_NN_MODULE}', metavar='pytorch neural network module', required=False, default='dprom',
                             type=str, help='Pytorch neural network architecture module to train', choices=self._NN_MODULES)
         args = parser.parse_args(sys.argv[2:])
         experiment_folder = args.__dict__[self._DICTKEY_EXPERIMENT_FOLDER]
@@ -496,7 +508,7 @@ class Helper:
                 'type': 'input',
                 'name': self._DICTKEY_NN_MODULE,
                 'message': 'Pytorch module (Neural network architecture):',
-                'default': self._NN_MODULES[0],
+                'default': "dprom",
                 'validate': ModuleValidator
             },
             {

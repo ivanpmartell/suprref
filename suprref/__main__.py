@@ -50,7 +50,6 @@ class SuprRef:
                 dataset = BIODataset(self._helper)
 
     def train(self):
-        #TODO: Ask module_args, optimizer_args
         if len(sys.argv) > 2:
             args = self._helper.read_train_arguments()
         else:

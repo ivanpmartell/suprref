@@ -26,6 +26,8 @@ class IOTrainer:
         learning_rate = self._helper.CONF_DICT[Helper._DICTKEY_NN_TRAIN_ARGS][Helper._DICTKEY_NN_LEARNING_RATE]
         batch_size = self._helper.CONF_DICT[Helper._DICTKEY_NN_TRAIN_ARGS][Helper._DICTKEY_NN_BATCH_SIZE]
         patience = self._helper.CONF_DICT[Helper._DICTKEY_NN_TRAIN_ARGS][Helper._DICTKEY_NN_PATIENCE]
+        module_args = self._helper._NN_MODULE_ARGS
+        optimizer_args = self._helper._NN_OPTIMIZER_ARGS
         if output_func == 'sigmoid':
             y_type = np.float32
             num_out_neurons = 1
@@ -44,7 +46,8 @@ class IOTrainer:
                          callbacks=[EarlyStopping(patience=patience),
                                     ProgressBar(),
                                     Checkpoint(dirname=self._helper.CONF_DICT[Helper._DICTKEY_EXPERIMENT_FOLDER],
-                                               f_params='model.pt')])
+                                               f_params='model.pt')],
+                         **module_args, **optimizer_args)
         print("Preprocessing: Preparing for stratified sampling")
         self._dataset = IODataset(self._helper, create_dataset=False,  y_type=y_type)
         self._y_train = self._dataset.get_y()
