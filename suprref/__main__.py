@@ -50,15 +50,15 @@ class SuprRef:
                 dataset = BIODataset(self._helper)
 
     def train(self):
-        #TODO: Ask max_epochs, learning_rate, batch_size, optimizer, and module
+        #TODO: Ask module_args, optimizer_args
         if len(sys.argv) > 2:
-            params = self._helper.read_train_arguments()
+            args = self._helper.read_train_arguments()
         else:
-            params = self._helper.ask_train_parameters()
-        self._helper.load_experiment(params.__dict__[Helper._DICTKEY_EXPERIMENT_FOLDER])
+            args = self._helper.ask_train_parameters()
+        self._helper.load_experiment()
+        self._helper.CONF_DICT[Helper._DICTKEY_NN_TRAIN_ARGS] = args
         if self._helper.CONF_DICT[Helper._DICTKEY_DATASET_TYPE] == Helper._DATASET_CHOICES[0]: # IO
-            trainer = IOTrainer(self._helper, params.__dict__[Helper._DICTKEY_NN_OUTPUT_FUNCTION],
-                      module=DPROMModule, max_epochs=50, learning_rate=0.001, batch_size=12, optimizer="Adam")
+            trainer = IOTrainer(self._helper)
             trainer.fit()
 
     def download(self):

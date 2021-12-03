@@ -3,8 +3,10 @@ import sys
 import json
 import torch
 import random
+import inspect
 import requests
 import argparse
+import importlib
 import numpy as np
 from pathlib import Path
 from itertools import product
@@ -110,12 +112,14 @@ class PositiveValidator(Validator):
     def validate(self, document):
         if(type(document) == int):
             text = str(document)
+        elif(type(document) == float):
+            text = str(document)
         elif(type(document) == str):
             text = document
         else:
             text = document.text
         try:
-            if not int(text) > 0:
+            if not float(text) > 0:
                 raise ValidationError(
                     message='Please enter a positive number',
                     cursor_position=len(text))
@@ -149,9 +153,31 @@ class FunctionValidator(Validator):
             text = document
         else:
             text = document.text
-        if not text in ['sigmoid', 'softmax']:
+        if not text in Helper._NN_OUTPUT_FUNCTIONS:
             raise ValidationError(
-                message='Please enter a valid output function. Functions: sigmoid, softmax',
+                message=f'Please enter a valid output function. Functions: {Helper._NN_OUTPUT_FUNCTIONS}',
+                cursor_position=len(text))
+
+class ModuleValidator(Validator):
+    def validate(self, document):
+        if(type(document) == str):
+            text = document
+        else:
+            text = document.text
+        if not text in Helper._NN_MODULES:
+            raise ValidationError(
+                message=f'Please enter a valid module. Functions: {Helper._NN_MODULES}',
+                cursor_position=len(text))
+
+class OptimizerValidator(Validator):
+    def validate(self, document):
+        if(type(document) == str):
+            text = document
+        else:
+            text = document.text
+        if not text in Helper._NN_OPTIMIZERS:
+            raise ValidationError(
+                message=f'Please enter a valid optimizer. Functions: {Helper._NN_OPTIMIZERS}',
                 cursor_position=len(text))
 
 class Helper:
@@ -159,15 +185,23 @@ class Helper:
     _k = 1
     CONF_DICT: dict
     _EXPERIMENT_CONFIGURATION_FILENAME = 'ExperimentConfiguration.json'
+    _EXPERIMENT_MODULE_ARGS_FILENAME = 'module.args'
+    _EXPERIMENT_OPTIMIZER_ARGS_FILENAME = 'optimizer.args'
     _NN_OUTPUT_FUNCTIONS = ['sigmoid', 'softmax']
     _NN_MODULES: dict
+    _NN_OPTIMIZERS = ['Adam', 'Adadelta', 'Adagrad', 'AdamW', 'SparseAdam', 'Adamax', 'ASGD', 'LBFGS', 'NAdam', 'RAdam', 'RMSprop', 'Rprop', 'SGD'] # Algorithms: https://pytorch.org/docs/stable/optim.html
     _F5_SPECIES = ['human', 'mouse', 'rat', 'dog', 'chicken', 'rhesus']
     _EPD_DATABASES = ['human', 'human_nc', 'M_mulatta', 'mouse', 'mouse_nc', 'R_norvegicus', 'C_familiaris', 'G_gallus', 'drosophila', 'A_mellifera', 'zebrafish', 'worm', 'arabidopsis', 'Z_mays', 'S_cerevisiae', 'S_pombe', 'P_falciparum']
     _EPD_TATA_FILTERS = ['all', 'with', 'without']
     _DATA_FOLDER = 'data/'
     _DICTKEY_NN_OUTPUT_FUNCTION = 'function'
     _DICTKEY_NN_MODULE = 'module'
-    _DICTKEY_NN_MODULE_ARGS = 'module_arguments'
+    _DICTKEY_NN_TRAIN_ARGS = 'training_arguments'
+    _DICTKEY_NN_MAX_EPOCHS = 'max_epochs'
+    _DICTKEY_NN_PATIENCE = 'patience'
+    _DICTKEY_NN_LEARNING_RATE = 'learning_rate'
+    _DICTKEY_NN_BATCH_SIZE = 'batch_size'
+    _DICTKEY_NN_OPTIMIZER = 'optimizer'
     _DICTKEY_INPUT_FILE = 'input'
     _DICTKEY_OUTPUT_FILE = 'output'
     _DICTKEY_ANNOTATIONS = 'annotations'
@@ -184,6 +218,10 @@ class Helper:
     _DICTKEY_EPD_DATABASE = 'database'
     _DICTKEY_EPD_TATA_FILTER = 'tata_filter'
     _overwrite = False
+    _maxepochs_default = 100
+    _batchsize_default = 16
+    _learningrate_default = 0.001
+    _patience_default = 10
     _upstream_default = 1000 # promoter upstream length for the annotations
     _downstream_default = 400 # promoter downstream length for the annotations
     _stride_default = 50 # step size for the number of nucleotides to skip while moving the window
@@ -194,7 +232,7 @@ class Helper:
 
     def __init__(self):
         self.create_kmers()
-        self._NN_MODULES = Helper.get_modules()
+        self._NN_MODULES = self.get_modules()
         dataset_configuration = {self._DICTKEY_SEQ_UPSTREAM_LEN: self._upstream_default,
                                  self._DICTKEY_SEQ_DOWNSTREAM_LEN: self._downstream_default,
                                  self._DICTKEY_STRIDE: self._stride_default,
@@ -206,7 +244,8 @@ class Helper:
         for i, p in enumerate(product(bases, repeat=self._k)):
             self.DNA_DICT[''.join(p)] = i
 
-    def load_experiment(self, experiment_folder):
+    def load_experiment(self):
+        experiment_folder = self.CONF_DICT[self._DICTKEY_EXPERIMENT_FOLDER]
         config_file = os.path.join(experiment_folder, self._EXPERIMENT_CONFIGURATION_FILENAME)
         with open(config_file) as f:
             self.CONF_DICT = json.load(f)
@@ -245,17 +284,29 @@ class Helper:
         parser = argparse.ArgumentParser(description='Train an experiment')
         parser.add_argument('-e', f'--{self._DICTKEY_EXPERIMENT_FOLDER}', metavar='experiment folder', required=True,
                             type=str, help='Path to the experiment folder')
+        parser.add_argument('-x', f'--{self._DICTKEY_NN_MAX_EPOCHS}', metavar='max epochs', required=False, default=self._maxepochs_default,
+                            type=int, help='Maximum number of epochs')
+        parser.add_argument('-p', f'--{self._DICTKEY_NN_PATIENCE}', metavar='patience', required=False, default=self._patience_default,
+                            type=int, help='Stop training after this many epochs without progress')
+        parser.add_argument('-l', f'--{self._DICTKEY_NN_LEARNING_RATE}', metavar='learning rate', required=False, default=self._learningrate_default,
+                            type=int, help='Value for the learning rate parameter')
+        parser.add_argument('-b', f'--{self._DICTKEY_NN_BATCH_SIZE}', metavar='batch size', required=False, default=self._batchsize_default,
+                            type=int, help='Value for the batch size parameter')
+        parser.add_argument('-t', f'--{self._DICTKEY_NN_OPTIMIZER}', metavar='optimizer', required=False, default=self._NN_OPTIMIZERS[0],
+                            type=str, help='Optimizer for training the neural network', choices=self._NN_OPTIMIZERS)
         parser.add_argument('-f', f'--{self._DICTKEY_NN_OUTPUT_FUNCTION}', metavar='output function', required=False, default=self._NN_OUTPUT_FUNCTIONS[0],
                             type=str, help='Function of the last layer of the neural network', choices=self._NN_OUTPUT_FUNCTIONS)
-        parser.add_argument('-m', f'--{self._DICTKEY_NN_MODULE}', metavar='pytorch neural network module', required=False, default=self._NN_MODULES[0],
+        parser.add_argument('-m', f'--{self._DICTKEY_NN_MODULE}', metavar='pytorch neural network module', required=False, default=list(self._NN_MODULES.keys())[0],
                             type=str, help='Pytorch neural network architecture module to train', choices=self._NN_MODULES)
-        parser.add_argument('-a', f'--{self._DICTKEY_NN_MODULE_ARGS}', metavar='pytorch neural network module arguments', required=False,
-                            type=dict, help='Arguments to pass to the pytorch module')
-
         args = parser.parse_args(sys.argv[2:])
         experiment_folder = args.__dict__[self._DICTKEY_EXPERIMENT_FOLDER]
         FolderValidator().validate(experiment_folder)
-        return args
+        self.CONF_DICT[self._DICTKEY_EXPERIMENT_FOLDER] = experiment_folder
+        for k in [self._DICTKEY_NN_MAX_EPOCHS, self._DICTKEY_NN_PATIENCE,
+                self._DICTKEY_NN_LEARNING_RATE, self._DICTKEY_NN_BATCH_SIZE]:
+            PositiveValidator().validate(args.__dict__[k])
+        args.__dict__.pop(self._DICTKEY_EXPERIMENT_FOLDER)
+        return args.__dict__
 
     def read_epd_download_arguments(self):
         parser = argparse.ArgumentParser(description='Download annotations from Eukaryotic Promoter Database (EPDnew)')
@@ -440,9 +491,57 @@ class Helper:
                 'message': 'Neural network output function:',
                 'default': self._NN_OUTPUT_FUNCTIONS[0],
                 'validate': FunctionValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_MODULE,
+                'message': 'Pytorch module (Neural network architecture):',
+                'default': self._NN_MODULES[0],
+                'validate': ModuleValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_OPTIMIZER,
+                'message': 'Pytorch optimizer for training:',
+                'default': self._NN_OPTIMIZERS[0],
+                'validate': OptimizerValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_MAX_EPOCHS,
+                'message': 'Maximum number of epochs during training:',
+                'default': self._maxepochs_default,
+                'validate': PositiveValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_PATIENCE,
+                'message': '(Patience)Stop after this many epochs without progress:',
+                'default': self._patience_default,
+                'validate': PositiveValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_LEARNING_RATE,
+                'message': 'Learning rate:',
+                'default': self._learningrate_default,
+                'validate': PositiveValidator
+            },
+            {
+                'type': 'input',
+                'name': self._DICTKEY_NN_BATCH_SIZE,
+                'message': 'Batch size:',
+                'default': self._batchsize_default,
+                'validate': PositiveValidator
             }
         ]
-        return Namespace(**prompt(questions))
+        train_args = {}
+        self.CONF_DICT[self._DICTKEY_EXPERIMENT_FOLDER] = prompt(questions)[self._DICTKEY_EXPERIMENT_FOLDER]
+        for k, v in prompt(questions).items():
+            if k == self._DICTKEY_EXPERIMENT_FOLDER:
+                continue
+            train_args[k] = v
+        return train_args
 
     def ask_dataset_config(self):
         questions = [
@@ -642,14 +741,24 @@ class Helper:
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
 
-    @staticmethod
-    def get_modules():
+    def get_modules(self):
         file_path = os.path.realpath(__file__)
         folder_path = os.path.dirname(file_path)
         modules_folder = os.path.join(folder_path, "modules")
         files = os.listdir(modules_folder)
-        py_files = [_[:-3] for _ in files if _[-3:] == ".py" and not _.startswith("__")]
-        return py_files
+        module_dict = {}
+        for f in files:
+            if f[-3:] == ".py" and not f.startswith("__"):
+                f_name = f[:-3]
+                f_path = os.path.join(modules_folder, f)
+                spec = importlib.util.spec_from_file_location(f_name, f_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                for x in dir(module):
+                    cls = getattr(module, x)
+                    if inspect.isclass(cls):
+                        module_dict[f_name] = cls
+        return module_dict
 
     @staticmethod
     def save_dataframe(file, kwargs):
