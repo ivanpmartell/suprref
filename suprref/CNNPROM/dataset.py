@@ -108,7 +108,8 @@ class CNNPROMDataset(Dataset):
         start = self._sld_start_in_memory[int_idx]
         pos_strand_label = self._sld_pos_strand_label_in_memory[int_idx]
         neg_strand_label = self._sld_neg_strand_label_in_memory[int_idx]
-        end = start + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_WINDOW_SIZE]
+        window_size = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN] + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
+        end = start + window_size
         if int_idx % 2 == 0:
             x = self._fasta_data[record][start:end]
             y = int(pos_strand_label)

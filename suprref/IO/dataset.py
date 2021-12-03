@@ -107,7 +107,7 @@ class IODataset(Dataset):
 
     def sld_creation(self, output_file):
         print("Creating sequence label data (.sld) dataset file")
-        window_size = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_WINDOW_SIZE]
+        window_size = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN] + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
         stride = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_STRIDE]
         output_folder = self._helper.CONF_DICT[Helper._DICTKEY_EXPERIMENT_FOLDER]
         input_file = self._helper.CONF_DICT[Helper._DICTKEY_INPUT_FILE]
@@ -145,7 +145,7 @@ class IODataset(Dataset):
                         if 'N' in seq:
                             seq = seq[stride:]
                         else:
-                            window = seq[:window_size]
+                            #window = seq[:window_size]
                             seq = seq[stride:]
                             pos_strand_label = self.get_label(annotation, record_id, '+', coordinate)
                             neg_strand_label = self.get_label(annotation, record_id, '-', coordinate)
@@ -156,7 +156,7 @@ class IODataset(Dataset):
 
 
     def pandas_dataframe_creation(self):
-        window_size = self._helper.CONF_DICT[self._helper._DICTKEY_CONFIGURATION][self._helper._DICTKEY_WINDOW_SIZE]
+        window_size = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN] + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
         stride = self._helper.CONF_DICT[self._helper._DICTKEY_CONFIGURATION][self._helper._DICTKEY_STRIDE]
         output_folder = self._helper.CONF_DICT[self._helper._DICTKEY_EXPERIMENT_FOLDER]
         input_file = self._helper.CONF_DICT[self._helper._DICTKEY_INPUT_FILE]
@@ -194,11 +194,10 @@ class IODataset(Dataset):
     def get_label(self, annotation, chromosome, strand, coordinate):
         error_type = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_ERROR_TYPE]
         error_margin = self._helper.CONF_DICT[self._helper._DICTKEY_CONFIGURATION][self._helper._DICTKEY_ERROR_MARGIN]
-
+        downstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
+        upstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN]
         if(error_type == Helper._IO_ERROR_TYPES[0]): #sequence-overlap
-            window_size = self._helper.CONF_DICT[self._helper._DICTKEY_CONFIGURATION][self._helper._DICTKEY_WINDOW_SIZE]
-            downstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
-            upstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN]
+            window_size = upstream_length + downstream_length
             tss_position = coordinate
             if(strand == '+'):
                 tss_position += upstream_length
@@ -215,8 +214,6 @@ class IODataset(Dataset):
             else:
                 return self.LABEL_IO_DICT[self.LABEL_DICT['Non-Promoter']]
         elif(error_type == Helper._IO_ERROR_TYPES[1]): #tss-proximity
-            downstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
-            upstream_length = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN]
             tss_position = coordinate
             if(strand == '+'):
                 tss_position += upstream_length
@@ -224,6 +221,17 @@ class IODataset(Dataset):
                 tss_position += downstream_length
             closest = annotation.get_closest_TSS(chromosome, strand, tss_position)
             if(abs(tss_position - closest) < error_margin[0]):
+                return self.LABEL_IO_DICT[self.LABEL_DICT['Promoter']]
+            else:
+                return self.LABEL_IO_DICT[self.LABEL_DICT['Non-Promoter']]
+        elif(error_type == Helper._IO_ERROR_TYPES[2]): #seq-proximity
+            window_size = upstream_length + downstream_length
+            if(strand == '+'):
+                seq_range = [coordinate - error_margin[0], coordinate + window_size + error_margin[0]]
+            else:
+                seq_range = [coordinate - error_margin[0], coordinate + window_size + error_margin[0]]
+            closest = annotation.get_closest_TSS(chromosome, strand, coordinate + (window_size / 2))
+            if(seq_range[0] <= closest and seq_range[1] >= closest):
                 return self.LABEL_IO_DICT[self.LABEL_DICT['Promoter']]
             else:
                 return self.LABEL_IO_DICT[self.LABEL_DICT['Non-Promoter']]
@@ -241,7 +249,8 @@ class IODataset(Dataset):
         start = self._sld_start_in_memory[int_idx]
         pos_strand_label = self._sld_pos_strand_label_in_memory[int_idx]
         neg_strand_label = self._sld_neg_strand_label_in_memory[int_idx]
-        end = start + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_WINDOW_SIZE]
+        window_size = self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_UPSTREAM_LEN] + self._helper.CONF_DICT[Helper._DICTKEY_CONFIGURATION][Helper._DICTKEY_SEQ_DOWNSTREAM_LEN]
+        end = start + window_size
         if int_idx % 2 == 0:
             x = self._fasta_data[record][start:end]
             y = int(pos_strand_label)

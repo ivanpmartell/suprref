@@ -176,7 +176,6 @@ class Helper:
     _DICTKEY_EXPERIMENT_FOLDER = 'experiment'
     _DICTKEY_SEQ_UPSTREAM_LEN = 'sequence_upstream_length'
     _DICTKEY_SEQ_DOWNSTREAM_LEN = 'sequence_downstream_length'
-    _DICTKEY_WINDOW_SIZE = 'window_size'
     _DICTKEY_STRIDE = 'stride'
     _DICTKEY_ERROR_TYPE = 'error_type'
     _DICTKEY_ERROR_MARGIN = 'error_margin'
@@ -187,10 +186,9 @@ class Helper:
     _overwrite = False
     _upstream_default = 1000 # promoter upstream length for the annotations
     _downstream_default = 400 # promoter downstream length for the annotations
-    _window_size_default = _upstream_default + _downstream_default # length of the moving window that selects sequences
     _stride_default = 50 # step size for the number of nucleotides to skip while moving the window
     _error_type_default = 'tss-proximity' # error types: proximity to TSS, sequence overlap
-    _IO_ERROR_TYPES = ['sequence-overlap', 'tss-proximity']
+    _IO_ERROR_TYPES = ['sequence-overlap', 'tss-proximity', 'seq-proximity']
     _error_margin_default = [100] # list, if 1 value then its TSS proximity, if 2 values then its sequence overlap (from upstream, from downstream)
     _DATASET_CHOICES = ['IO', 'BIO', 'BME', 'CBG', 'CBPS', 'LITERATURE'] # "CBG" cluster by gene, "CBPS" cluster by promoter similarity
 
@@ -199,7 +197,6 @@ class Helper:
         self._NN_MODULES = Helper.get_modules()
         dataset_configuration = {self._DICTKEY_SEQ_UPSTREAM_LEN: self._upstream_default,
                                  self._DICTKEY_SEQ_DOWNSTREAM_LEN: self._downstream_default,
-                                 self._DICTKEY_WINDOW_SIZE: self._window_size_default,
                                  self._DICTKEY_STRIDE: self._stride_default,
                                  self._DICTKEY_SEED: 0}
         self.CONF_DICT = {self._DICTKEY_CONFIGURATION: dataset_configuration}
@@ -359,6 +356,9 @@ class Helper:
             elif(self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_TYPE] == self._IO_ERROR_TYPES[1]): # tss proximity
                 if(len(self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_MARGIN]) != 1):
                     raise Exception('Configuration file error: Error margin is not valid')
+            elif(self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_TYPE] == self._IO_ERROR_TYPES[2]): # seq proximity
+                if(len(self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_MARGIN]) != 1):
+                    raise Exception('Configuration file error: Error margin is not valid')
             else:
                 raise Exception('Configuration file error: Error type is missing or invalid')
                 
@@ -464,14 +464,6 @@ class Helper:
             },
             {
                 'type': 'input',
-                'name': self._DICTKEY_WINDOW_SIZE,
-                'message': 'Moving window length:',
-                'default': str(self._upstream_default + self._downstream_default),
-                'validate': PositiveValidator,
-                'filter': lambda val: int(val)
-            },
-            {
-                'type': 'input',
                 'name': self._DICTKEY_STRIDE,
                 'message': 'Stride:',
                 'default': str(self._stride_default),
@@ -552,12 +544,25 @@ class Helper:
             answers = prompt(questions)
             self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_MARGIN] = [answers['upstream'], answers['downstream']]
 
-        elif self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_TYPE] == self._IO_ERROR_TYPES[1]: # proximity
+        elif self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_TYPE] == self._IO_ERROR_TYPES[1]: # tss proximity
             questions = [
                 {
                     'type': 'input',
                     'name': 'proximity',
                     'message': 'Length of proximity to the TSS in promoter:',
+                    'validate': PositiveValidator,
+                    'filter': lambda val: int(val)
+                }
+            ]
+            answers = prompt(questions)
+            self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_MARGIN] = [answers['proximity']]
+        
+        elif self.CONF_DICT[self._DICTKEY_CONFIGURATION][self._DICTKEY_ERROR_TYPE] == self._IO_ERROR_TYPES[2]: # tss proximity
+            questions = [
+                {
+                    'type': 'input',
+                    'name': 'proximity',
+                    'message': 'Length of sequence proximity to the TSS:',
                     'validate': PositiveValidator,
                     'filter': lambda val: int(val)
                 }
