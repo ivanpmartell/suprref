@@ -76,6 +76,18 @@ class FolderValidator(Validator):
         else:
             os.makedirs(my_folder)
 
+class IsFileValidator(Validator):
+    def validate(self, document):
+        if(type(document) == str):
+            text = document
+        else:
+            text = document.text
+        my_file = Path(text)
+        if not my_file.exists():
+            raise ValidationError(
+                    message='Please enter a file that exists',
+                    cursor_position=len(text))
+
 
 class FileExistsValidator(Validator):
     def validate(self, document):
@@ -184,6 +196,7 @@ class Helper:
     DNA_DICT = {}
     _k = 1
     CONF_DICT: dict
+    _FILE_TYPES = ['sld', 'fasta']
     _EXPERIMENT_CONFIGURATION_FILENAME = 'ExperimentConfiguration.json'
     _EXPERIMENT_MODULE_ARGS_FILENAME = 'module.args'
     _EXPERIMENT_OPTIMIZER_ARGS_FILENAME = 'optimizer.args'
@@ -219,6 +232,8 @@ class Helper:
     _DICTKEY_F5_SPECIES = 'species'
     _DICTKEY_EPD_DATABASE = 'database'
     _DICTKEY_EPD_TATA_FILTER = 'tata_filter'
+    _DICTKEY_INPUT_TYPE = 'input_type'
+    _DICTKEY_OUTPUT_TYPE = 'output_type'
     _overwrite = False
     _maxepochs_default = 100
     _batchsize_default = 16
@@ -319,6 +334,29 @@ class Helper:
             PositiveValidator().validate(args.__dict__[k])
         args.__dict__.pop(self._DICTKEY_EXPERIMENT_FOLDER)
         return args.__dict__
+
+    def read_convert_arguments(self):
+        parser = argparse.ArgumentParser(description='File conversion system')
+        parser.add_argument('-i', f'--{self._DICTKEY_INPUT_FILE}', metavar='input file', required=True,
+                            type=str, help='Path to the input file')
+        parser.add_argument('-o', f'--{self._DICTKEY_OUTPUT_FILE}', metavar='output file', required=True,
+                            type=str, help='Path to save the converted file')
+        parser.add_argument('-t', f'--{self._DICTKEY_INPUT_TYPE}', metavar='input type', required=True, default=self._FILE_TYPES[0],
+                            type=str, help='Type of the input file', choices=self._FILE_TYPES)
+        parser.add_argument('-e', f'--{self._DICTKEY_OUTPUT_TYPE}', metavar='output type', required=True, default=self._FILE_TYPES[1],
+                            type=str, help='Type of the output file', choices=self._FILE_TYPES)
+        args = parser.parse_args(sys.argv[2:])
+        input_file = args.__dict__[self._DICTKEY_INPUT_FILE]
+        if input_file:
+            IsFileValidator().validate(input_file)
+        output_file = args.__dict__[self._DICTKEY_OUTPUT_FILE]
+        if output_file:
+            FileExistsValidator().validate(output_file)
+        input_type = args.__dict__[self._DICTKEY_INPUT_TYPE]
+        output_type = args.__dict__[self._DICTKEY_OUTPUT_TYPE]
+        if input_type == output_type:
+            raise RuntimeError(msg="No conversion necessary. Input type = Output type")
+        self.CONF_DICT = args.__dict__
 
     def read_epd_download_arguments(self):
         parser = argparse.ArgumentParser(description='Download annotations from Eukaryotic Promoter Database (EPDnew)')
@@ -457,6 +495,44 @@ class Helper:
         self.ask_dataset_config()
         self.ask_dataset_type()
         self.ask_error_type()
+
+    def ask_convert_parameters(self):
+        input_questions = [
+            {
+                'type': 'input',
+                'name': self._DICTKEY_INPUT_FILE,
+                'message': 'Input file:',
+                'filter': lambda val: os.path.relpath(val),
+                'validate': IsFileValidator
+            },
+            {
+                'type': 'list',
+                'name': self._DICTKEY_INPUT_TYPE,
+                'message': 'Input file type:',
+                'choices': self._FILE_TYPES
+            }
+        ]
+        for k, v in prompt(input_questions).items():
+            self.CONF_DICT[k] = v
+        out_file_types = self._FILE_TYPES.copy()
+        out_file_types.remove(self.CONF_DICT[self._DICTKEY_INPUT_TYPE])
+        output_questions = [
+            {
+                'type': 'input',
+                'name': self._DICTKEY_OUTPUT_FILE,
+                'message': 'Output file:',
+                'filter': lambda val: os.path.relpath(val),
+                'validate': FileExistsValidator
+            },
+            {
+                'type': 'list',
+                'name': self._DICTKEY_OUTPUT_TYPE,
+                'message': 'Output file type:',
+                'choices': out_file_types # Has the input type removed
+            }
+        ]
+        for k, v in prompt(output_questions).items():
+            self.CONF_DICT[k] = v
     
     def ask_config(self):
         questions = [
@@ -782,6 +858,17 @@ class Helper:
         buffer.write(line)
     
     @staticmethod
+    def save_fasta_record(buffer, kwargs):
+        buffer.write(f">{kwargs.get('record')}{kwargs.get('start')}:{kwargs.get('end')}={kwargs.get('lbl')}\n")
+        record_data = kwargs.get('record_data')
+        while(len(record_data) > 50):
+            line = record_data[:50]
+            record_data = record_data[50:]
+            buffer.write(f"{line}\n")
+        if len(record_data) > 1:
+            buffer.write(f"{record_data}\n")
+    
+    @staticmethod
     def save_sldi_line(buffer, kwargs):
         line = f"{kwargs.get('record')}\t{kwargs.get('record_start')}\t{kwargs.get('record_end')}\n"
         buffer.write(line)
@@ -899,4 +986,3 @@ class Helper:
             save_file = os.path.abspath(save_path)
         print(f"Downloading FANTOM5 {db} promoters")
         self.save_file(save_file, Helper.save_annotation, url=download_url)
-    

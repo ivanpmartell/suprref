@@ -255,7 +255,7 @@ class IODataset(Dataset):
             x = self._fasta_data[record][start:end]
             y = int(pos_strand_label)
         else:
-            x = self._fasta_data[record][start:end].reverse
+            x = -self._fasta_data[record][start:end]
             y = int(neg_strand_label)
         return self._helper.one_hot_encoder(x.seq), np.array(y, dtype=self._y_type)
 
