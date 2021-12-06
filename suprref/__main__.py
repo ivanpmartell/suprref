@@ -59,6 +59,8 @@ class SuprRef:
         if self._helper.CONF_DICT[Helper._DICTKEY_INPUT_TYPE] == Helper._FILE_TYPES[0]: # sld
             if self._helper.CONF_DICT[Helper._DICTKEY_OUTPUT_TYPE] == Helper._FILE_TYPES[1]: # fasta
                 converter.convert_sld2fasta()
+            if self._helper.CONF_DICT[Helper._DICTKEY_OUTPUT_TYPE] == Helper._FILE_TYPES[2]: # kmer
+                converter.convert_sld2kmer()
         elif self._helper.CONF_DICT[Helper._DICTKEY_INPUT_TYPE] == Helper._FILE_TYPES[1]: # fasta
             if self._helper.CONF_DICT[Helper._DICTKEY_OUTPUT_TYPE] == Helper._FILE_TYPES[0]: # sld
                 converter.convert_fasta2sld()

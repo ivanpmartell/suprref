@@ -196,7 +196,7 @@ class Helper:
     DNA_DICT = {}
     _k = 1
     CONF_DICT: dict
-    _FILE_TYPES = ['sld', 'fasta']
+    _FILE_TYPES = ['sld', 'fasta', 'kmer']
     _EXPERIMENT_CONFIGURATION_FILENAME = 'ExperimentConfiguration.json'
     _EXPERIMENT_MODULE_ARGS_FILENAME = 'module.args'
     _EXPERIMENT_OPTIMIZER_ARGS_FILENAME = 'optimizer.args'
@@ -885,6 +885,11 @@ class Helper:
     def save_json(file, json_obj):
         with open(file, 'w') as json_file:
             json.dump(next(iter(json_obj.values())), json_file)
+
+    @staticmethod
+    def save_tsv(buffer, kwargs):
+        line = f"{kwargs.get('seq')}\t{kwargs.get('label')}\n"
+        buffer.write(line)
 
     @staticmethod
     def save_annotation(file, kwargs):
