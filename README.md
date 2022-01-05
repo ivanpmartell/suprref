@@ -52,6 +52,15 @@ After installation you can run the executable with arguments.
 - Bring up the help manual
 ```suprref -h```
 
+## Data
+Data consolidated in ```previous/data/``` folder is obtained through UCSC, EPD, MGA, as well as resources from other promoter recognition researchers. Certain folders inside the data folder contain a readme file to attribute ownership of data within them. Other data files that are too big for the repository can be obtained through bash scripts, e.g. human chromosomes. Data shown in our results and tables can be obtained using the bash scripts inside the ```previous/``` folder.
+
+## Analysis and visualisation
+Visualisation and analysis of promoter files was done using jupyter notebooks found in ```analysis/models/notebooks/```. Further analysis and visuals  can be found in the PowerBI file at ```previous/``` folder.
+
+## Source code
+Code for the command-line tool can be found inside the ```suprref/``` folder, while code for the cross-testing, training and testing of the reimplemented literature model can be found inside the ```previous/``` folder.
+
 ## Troubleshooting
 This python framework has been tested on Ubuntu 18.04 (bionic) using the python3 and pip3 commands found in the default repositories.
 
